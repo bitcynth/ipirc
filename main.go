@@ -18,6 +18,7 @@ func main() {
 
 	flag.Parse()
 
+	// setup the tun interface
 	ifce, err := water.New(water.Config{
 		DeviceType: water.TUN,
 	})
@@ -27,16 +28,21 @@ func main() {
 		return
 	}
 
+	// just log the interface name
 	log.Printf("if: %s\n", ifce.Name())
 
+	// setup the irc connection
 	ircConn := irc.IRC(*nick, "this is cursed https://cynthia.re")
 
+	// callback for irc connection being established
 	ircConn.AddCallback("001", func(e *irc.Event) {
 		ircConn.Join(*channel)
 	})
 
+	// callback for messages on irc
 	ircConn.AddCallback("PRIVMSG", func(e *irc.Event) {
 		msg := e.Message()
+		// do magic with packet messages
 		if strings.HasPrefix(msg, "PACKET ") {
 			packet, err := base64.StdEncoding.DecodeString(msg[7:])
 			if err != nil {
@@ -50,6 +56,7 @@ func main() {
 		}
 	})
 
+	// connect to irc
 	err = ircConn.Connect(*addr)
 	if err != nil {
 		log.Fatal(err)
@@ -57,24 +64,7 @@ func main() {
 
 	go ircConn.Loop()
 
-	/*go func(conn *irc.Connection) {
-		packet := make([]byte, 2000)
-		for {
-			n, err := conn.Read(packet)
-			if err != nil {
-				log.Print("owo")
-				//conn.Close()
-				//break
-			}
-
-			log.Printf("Packet recv: % x\n", packet[:n])
-			_, err = ifce.Write(packet[:n])
-			if err != nil {
-				log.Println("failed to write to if")
-			}
-		}
-	}(ircConn)*/
-
+	// listen for packets to send to irc
 	packet := make([]byte, 2000)
 	for {
 		n, err := ifce.Read(packet)
